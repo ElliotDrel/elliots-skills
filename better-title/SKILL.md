@@ -2,7 +2,7 @@
 name: better-title
 description: Suggest better chat session titles and rename the session
 disable-model-invocation: true
-allowed-tools: Bash
+allowed-tools: Bash, AskUserQuestion
 ---
 
 # Better Title
@@ -19,19 +19,16 @@ Suggest **3 descriptive titles** for this chat session based on the conversation
 
 ## Format
 
-Present the 3 options as a numbered list:
-
-1. Title One
-2. Title Two
-3. Title Three
-
-Then ask: **"Pick a number (1-3), or tell me what to change."**
+Present the 3 options using `AskUserQuestion` with a single-select question (`multiSelect: false`):
+- Each option's `label` is the full title text
+- Each option's `description` is a brief rationale for why it's a good title
+- The user can also select "Other" (provided automatically) to give feedback
 
 ## Interaction loop
 
-- If the user picks a number, use that title.
-- If the user gives feedback (e.g. "shorter", "more specific", "mention X"), generate 3 new suggestions incorporating their feedback and present again.
-- Keep iterating until the user picks a number or gives you an exact title.
+- If the user selects one of the 3 titles, use that title.
+- If the user selects "Other" and provides feedback (e.g. "shorter", "more specific", "mention X"), generate 3 new suggestions incorporating their feedback and present again via `AskUserQuestion`.
+- Keep iterating until the user selects a title or gives you an exact title.
 
 ## Renaming
 
