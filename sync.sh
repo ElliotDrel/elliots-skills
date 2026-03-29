@@ -15,6 +15,7 @@ set -euo pipefail
 # Add new skills here as you create them.
 REGISTERED_SKILLS=(
   "better-title"
+  "chris-voss"
 )
 # ───────────────────────────────────────────────────────────────────
 
