@@ -16,6 +16,7 @@ set -euo pipefail
 REGISTERED_SKILLS=(
   "better-title"
   "chris-voss"
+  "github-issues-update"
 )
 # ───────────────────────────────────────────────────────────────────
 
