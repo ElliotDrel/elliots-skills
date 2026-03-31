@@ -38,7 +38,7 @@ Use `gh` CLI to check status. This file helps morning check-ins go faster.
 Run this to get a quick status update on all active issues:
 
 ```bash
-gh api search/issues?q=involves:USERNAME_HERE+updated:>$(date -d '7 days ago' +%Y-%m-%d)+is:open --jq '.items[] | "#\(.number) \(.repository_url | split("/") | .[-2:] | join("/")) — \(.title) [updated: \(.updated_at)]"'
+gh api search/issues?q=involves:USERNAME_HERE+updated:>$(python3 -c "import datetime; print((datetime.datetime.now()-datetime.timedelta(days=7)).strftime('%Y-%m-%d'))")+is:open --jq '.items[] | "#\(.number) \(.repository_url | split("/") | .[-2:] | join("/")) — \(.title) [updated: \(.updated_at)]"'
 ```
 
 Then for each issue, check recent comments:

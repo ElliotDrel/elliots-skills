@@ -85,7 +85,7 @@ From this, determine for each issue:
 
 Search for recently closed issues involving the user:
 ```bash
-gh api "search/issues?q=involves:USERNAME+is:closed+closed:>$(date -d '30 days ago' +%Y-%m-%d)&per_page=50&sort=updated" \
+gh api "search/issues?q=involves:USERNAME+is:closed+closed:>$(python3 -c "import datetime; print((datetime.datetime.now()-datetime.timedelta(days=30)).strftime('%Y-%m-%d'))")&per_page=50&sort=updated" \
   --jq '.items[] | "#\(.number) \(.repository_url | split("/") | .[-2:] | join("/")) — \(.title) [closed: \(.closed_at | split("T")[0])]"'
 ```
 
