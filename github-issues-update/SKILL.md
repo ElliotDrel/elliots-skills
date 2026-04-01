@@ -49,14 +49,14 @@ References:
 
 ### Save mode
 
-1. Read the tracker file at `$HOME/Documents/github-tracker.md`.
+1. Read the tracker file at `$HOME/OneDrive/Documents/github-tracker.md`.
 2. If the file does not exist, tell the user to run `/github-issues-update` first to set up the tracker, then STOP.
 3. Read `workflows/save-issues.md` and `references/tracker-schema.md` from the skill directory.
 4. Execute the save workflow.
 
 ### Check-in mode
 
-1. Read the tracker file at `$HOME/Documents/github-tracker.md`.
+1. Read the tracker file at `$HOME/OneDrive/Documents/github-tracker.md`.
 2. **If the file does not exist or is empty:**
    - Tell the user: "No tracker file found. Let's set one up."
    - Read `setup.md` from the skill directory.
