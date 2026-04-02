@@ -1,25 +1,56 @@
 # Check-In Workflow
 
 Main workflow for `/github-issues-update`. Executed when tracker file exists.
+
+**Prerequisites loaded by router:** `$TRACKER_DATA` (parsed JSON from `parse-tracker`),
+`$SKILL_DIR` (skill directory path), `$TRACKER_PATH` (tracker file path).
+
 Read `references/gh-cli-patterns.md` and `references/tracker-schema.md` before starting.
 
-Uses one subagent per tracked issue for thorough, parallel reviews.
+Uses one subagent per tracked issue for thorough, parallel reviews. Results are written
+to a temp directory on disk — NOT held in context memory.
 
 ---
 
-## Phase 1: Gather Data (Subagents)
+<step name="init_temp" priority="first">
 
-Before spawning agents, parse the tracker file to extract:
-- All active issues (owner, repo, number, title, role, last check date, known duplicates/related)
-- All closed issues (owner, repo, number)
-- All upstream issues (owner, repo, number)
-- The GitHub USERNAME from the file header
+## Step 1: Initialize Temp Directory
 
-### 1a. One subagent per active issue
+Create the temp directory for subagent results:
+
+```bash
+TEMP_DIR=$(node "$SKILL_DIR/bin/tracker-tools.cjs" init-temp)
+echo "Temp dir: $TEMP_DIR"
+```
+
+Store `$TEMP_DIR` for all subsequent steps.
+
+Extract from `$TRACKER_DATA`:
+- `username` — GitHub username
+- `active_issues` — array of active issue objects
+- `closed_issues` — array of closed issue objects
+- `all_tracked_numbers` — list of all tracked issue keys (owner/repo#N)
+- `oldest_check_date` — earliest "Status as of" date across all issues
+
+**acceptance_criteria:** `$TEMP_DIR` exists and is writable. `$TRACKER_DATA` has `username` and at least one issue.
+
+</step>
+
+<step name="spawn_agents">
+
+## Step 2: Gather Data (Subagents)
+
+### 2a. One subagent per active issue
 
 **Spawn one Agent per active issue**, all in parallel. Each agent performs a thorough
-review of a single issue. Include in the agent prompt: OWNER, REPO, NUMBER, TITLE, ROLE,
-LAST_CHECK_DATE, USERNAME, known duplicate/related issue numbers, and upstream issue (if any).
+review of a single issue AND writes its result to a file in `$TEMP_DIR`.
+
+**CRITICAL:** Each agent's prompt MUST include the instruction to write results to a
+specific file path. The agent MUST write the file — this is not optional.
+
+For each active issue in `$TRACKER_DATA.active_issues`, include in the agent prompt:
+OWNER, REPO, NUMBER, TITLE, ROLE, LAST_CHECK_DATE, USERNAME, known duplicate/related
+issue numbers, and upstream issue (if any).
 
 Agent prompt template:
 
@@ -64,78 +95,168 @@ Agent prompt template:
 > addresses/sizes. Don't write "supersedes #X" without capturing WHY.
 >
 > Compare fetched data against the last check date (LAST_CHECK_DATE):
-> - New comments since last check? Report who said what WITH specifics — what did they propose, what data did they share, what did they ask?
+> - New comments since last check? Report who said what WITH specifics.
 > - Label changes? State changes (open → closed or vice versa)?
 > - Any comments from repo maintainers or Anthropic employees? (Highest priority signals.)
 > - Any new activity on known duplicates/related?
 > - Any new duplicate/related issues found?
 > - Upstream status changes?
 >
-> **Step 3 — Return structured report:**
+> **Step 3 — MANDATORY: Write result file to disk.**
 >
+> You MUST write your analysis to this exact file path:
+> `TEMP_DIR/issue-OWNER-REPO-NUMBER.md`
+>
+> Use this exact format:
+>
+> ```markdown
+> ---
+> type: issue
+> owner: OWNER
+> repo: REPO
+> number: NUMBER
+> title: "TITLE"
+> state: open_or_closed
+> state_changed: true_or_false
+> labels: label1, label2
+> has_activity: true_or_false
+> role: ROLE
+> last_check_date: LAST_CHECK_DATE
+> last_commenter: "@username"
+> last_comment_date: YYYY-MM-DD
+> comment_count: N
+> ---
+>
+> ## Activity
+> - @username (YYYY-MM-DD): What they said WITH specifics.
+> [Or: "No new activity since LAST_CHECK_DATE."]
+>
+> ## Duplicates & Related
+> ### Known — updates
+> [Activity on known dupes, or "No changes."]
+>
+> ### New finds
+> [New dupes found, or "None found."]
+>
+> ## Upstream
+> [Upstream status, or "N/A"]
+>
+> ## Next Steps
+> - [ ] Action description (target: owner/repo#NUMBER)
+> [Or: "None — no action needed."]
+>
+> ## Watch For
+> - Signal to watch for
+>
+> ## Tracker Updates
+> status_summary: Open/Closed. Labels: ... . Summary. N comments total.
+> what_to_check: Updated signal to watch for.
+> [Optional: new_duplicate: #NUMBER — @author, "Title" (date). Why related.]
 > ```
-> ## OWNER/REPO#NUMBER — TITLE
-> - **State:** Open/Closed [changed since last check? yes/no]
-> - **Labels:** [current labels]
-> - **Activity since LAST_CHECK_DATE:** [who said what WITH specifics — technical details, proposals, data shared, questions asked. Highlight maintainer/Anthropic responses. Say "No new activity" if none.]
-> - **Known duplicates/related — updates:** [any new activity on previously identified dupes. "None" if no dupes or no activity.]
-> - **New duplicates/related found:** [list new ones with #number, @author, title, date, and why related. "None found" if none or skipped.]
-> - **Upstream status:** [current state if upstream exists. "N/A" if no upstream.]
-> - **Suggested next steps:** [immediate actions — respond to question, comment on new duplicate, follow up, etc. "None" if nothing to do.]
-> - **Future:** [things to monitor, low-priority items]
-> - **Has activity:** true/false [for sorting purposes]
-> ```
+>
+> **DO NOT skip writing the file. This is the primary output of your work.**
+> After writing, confirm: "Result written to TEMP_DIR/issue-OWNER-REPO-NUMBER.md"
 
-### 1b. General check subagent
+### 2b. General check subagent
 
-**Spawn one additional Agent** (in parallel with the per-issue agents) for general checks
-that aren't issue-specific. Include USERNAME and LAST_CHECK_DATE (use the oldest "Status as of"
-date from the tracker).
+**Spawn one additional Agent** (in parallel with the per-issue agents) for general checks.
+Include USERNAME, oldest_check_date, all_tracked_numbers, and closed_issues.
 
 Agent prompt:
 
-> Run these general GitHub checks for user USERNAME. Last check date: LAST_CHECK_DATE.
+> Run these general GitHub checks for user USERNAME. Last check date: OLDEST_CHECK_DATE.
 >
 > **Fetch in parallel:**
 >
 > 1. Recent activity involving the user (issues not already in the tracker):
->    `gh api "search/issues?q=involves:USERNAME+updated:>LAST_CHECK_DATE+is:open" --jq '.items[] | "#\(.number) \(.repository_url | split(\\"/\\") | .[-2:] | join(\\"/\\")) — \(.title) [updated: \(.updated_at)]"'`
->    Filter out these already-tracked issue numbers: [ALL_TRACKED_NUMBERS].
+>    `gh api "search/issues?q=involves:USERNAME+updated:>OLDEST_CHECK_DATE+is:open" --jq '.items[] | "#\(.number) \(.repository_url | split("/") | .[-2:] | join("/")) — \(.title) [updated: \(.updated_at)]"'`
+>    Filter out these already-tracked issue keys: [ALL_TRACKED_NUMBERS].
 >
 > 2. Check closed issues for reopens (run each in parallel):
->    For each of these closed issues: [CLOSED_ISSUE_LIST]
+>    For each closed issue: [CLOSED_ISSUE_LIST]
 >    `gh api repos/OWNER/REPO/issues/NUMBER --jq '.state'`
 >    Flag any that are no longer "closed".
 >
-> **Return:**
-> - **New issues not in tracker:** list with #number, title, repo, and recommendation (track/ignore)
-> - **Reopened issues:** any closed issues that were reopened (or "None")
+> **MANDATORY: Write result file to disk.**
+>
+> You MUST write your analysis to this exact file path:
+> `TEMP_DIR/general-check.md`
+>
+> Use this exact format:
+>
+> ```markdown
+> ---
+> type: general
+> ---
+>
+> ## New Issues
+> | Issue | Repo | Role | Recommendation |
+> |-------|------|------|----------------|
+> | #NUMBER — Title | owner/repo | role | Track / Ignore (why) |
+> [Or: "None"]
+>
+> ## Reopened
+> [List reopened issues, or "None"]
+>
+> ## Closed Status
+> All N closed issues confirmed still closed.
+> [Or list surprises]
+>
+> ## New Issues to Add
+> [For issues recommended to track, provide full tracker entries here.
+>  Or: "None" if no issues recommended for tracking.]
+> ```
+>
+> **DO NOT skip writing the file. This is the primary output of your work.**
+> After writing, confirm: "Result written to TEMP_DIR/general-check.md"
 
-### 1c. Collect results
+### 2c. Wait and verify
 
-Wait for ALL agents to complete. You now have:
-- One structured report per active issue
-- One general check report
+Wait for ALL agents to complete. Then verify result files exist:
 
----
+```bash
+ls "$TEMP_DIR"/*.md | wc -l
+```
 
-## Phase 2: Compile and Present Report
+Expected: one file per active issue + one general-check.md.
 
-Read `references/overview-template.md` from the skill directory. Use it as the formatting
-template for the report. Fill in every section from the collected subagent results:
+If any result files are missing, report which agents failed to write their output.
+DO NOT proceed to compile if critical files are missing — re-run failed agents.
 
-- **Issues with activity** (has_activity: true) get full detail blocks, ordered most active first.
-- **Issues with no activity** go in the summary table.
-- **New issues, closed status, upstream status** come from the general check agent.
-- **Summary** section at the bottom tallies action items and highlights what needs attention.
+**acceptance_criteria:** `$TEMP_DIR` contains one `issue-*.md` per active issue AND `general-check.md`.
 
-Omit any section that has no data (e.g., skip "Upstream Status" if no upstream issues exist).
+</step>
 
----
+<step name="compile_report" priority="must-execute">
 
-## Phase 3: Confirm and Execute
+## Step 3: Compile and Present Report
 
-**If there are "Next steps (now)" items:**
+**MANDATORY — DO NOT SKIP THIS STEP.**
+This is the primary output of the check-in. Proceeding to actions or tracker updates
+without showing the overview to the user is a workflow violation.
+
+Run the compile-report script:
+
+```bash
+node "$SKILL_DIR/bin/tracker-tools.cjs" compile-report --temp-dir "$TEMP_DIR" --date "$(date +%Y-%m-%d)"
+```
+
+The script reads all result files from `$TEMP_DIR`, compiles the overview report, and
+outputs it to stdout. It also writes it to `$TEMP_DIR/_compiled-report.md`.
+
+**Show the FULL report output to the user.** Do not summarize, truncate, or paraphrase.
+The user needs to see the complete overview to make decisions in the next step.
+
+**acceptance_criteria:** Report shown to user containing "GitHub Issues Check-In" header.
+`$TEMP_DIR/_compiled-report.md` exists.
+
+</step>
+
+<step name="confirm_actions">
+
+## Step 4: Confirm and Execute Actions
+
+**If there are "Next steps" items in the report:**
 
 Use AskUserQuestion:
 - header: "Execute?"
@@ -169,9 +290,13 @@ If the user wants drafts:
 - Verify your claims are accurate — don't misattribute root causes
 - Match the tone of the target repo's community
 
----
+**acceptance_criteria:** Actions either executed with confirmation or explicitly skipped by user.
 
-## Phase 4: Update Tracker
+</step>
+
+<step name="update_tracker">
+
+## Step 5: Update Tracker
 
 Use AskUserQuestion:
 - header: "Update file?"
@@ -180,16 +305,38 @@ Use AskUserQuestion:
   - "Yes, update it"
   - "No, leave it as-is"
 
-If confirmed, update `github-tracker.md` following the schema in `references/tracker-schema.md`:
+If confirmed, run the update-tracker script:
 
-- Update all "Status as of" dates to today's date
-- Update comment counts, labels, state descriptions
-- Add newly discovered duplicates/related issues under their parent issue
-- Add new issues to Active or Closed sections as appropriate
-- Move any newly closed issues from Active to Closed
-- Clear completed "Next steps (now)" items
-- Add new "Future" items identified this check-in
-- Preserve any content the user added manually (don't overwrite custom notes)
+```bash
+node "$SKILL_DIR/bin/tracker-tools.cjs" update-tracker --tracker "$TRACKER_PATH" --temp-dir "$TEMP_DIR" --date "$(date +%Y-%m-%d)"
+```
 
-After updating, tell the user what changed:
-> Tracker updated. Changed: [brief summary of what was modified].
+The script returns JSON with `updated` (bool) and `changes` (array of descriptions).
+
+Report what changed to the user.
+
+**acceptance_criteria:** Tracker either updated (with changes reported) or explicitly skipped by user.
+
+</step>
+
+<step name="validate_and_cleanup" priority="last">
+
+## Step 6: Validate and Cleanup
+
+Run validation to confirm all workflow outputs were produced:
+
+```bash
+node "$SKILL_DIR/bin/tracker-tools.cjs" validate --temp-dir "$TEMP_DIR" --tracker "$TRACKER_PATH" --expected ACTIVE_ISSUE_COUNT --date "$(date +%Y-%m-%d)"
+```
+
+If validation fails, report which checks did not pass.
+
+Then clean up the temp directory:
+
+```bash
+rm -rf "$TEMP_DIR"
+```
+
+**acceptance_criteria:** Validation passes. Temp directory removed.
+
+</step>

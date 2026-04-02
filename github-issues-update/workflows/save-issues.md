@@ -3,16 +3,27 @@
 Adds issues from the current conversation to the tracker file. Designed to be run
 in a chat where the user has been creating or discussing GitHub issues.
 
+**Prerequisites loaded by router:** `$TRACKER_DATA` (parsed JSON from `parse-tracker`),
+`$SKILL_DIR` (skill directory path), `$TRACKER_PATH` (tracker file path).
+
 ---
 
-## Phase 1: Understand the Tracker
+<step name="understand_tracker" priority="first">
 
-The tracker file has already been read by the router. Use it to:
-- Learn the existing entry format (match it exactly for new entries)
-- Extract the GitHub username from the header
-- Identify which issues are already tracked (to avoid duplicates)
+## Step 1: Understand the Tracker
 
-## Phase 2: Identify Issues from Conversation
+The tracker has already been parsed by the router via `parse-tracker`. Use `$TRACKER_DATA` to:
+- Learn which issues are already tracked (`all_tracked_numbers`) — avoid duplicates
+- Get the GitHub `username` from the parsed data
+- Understand the existing entry format by reading `references/tracker-schema.md`
+
+**acceptance_criteria:** `$TRACKER_DATA` loaded with username and tracked issue list.
+
+</step>
+
+<step name="scan_conversation">
+
+## Step 2: Identify Issues from Conversation
 
 Scan the conversation history for GitHub issues the user created or discussed. Look for:
 - `gh issue create` commands and their output (issue URLs/numbers)
@@ -22,13 +33,24 @@ Scan the conversation history for GitHub issues the user created or discussed. L
 
 For each issue found, extract what you can from the conversation:
 - Owner/repo and issue number
-- Title
+- Title (if known from conversation)
 - The user's role (usually Author if they just created it)
 - Key context: why they filed it, what they're watching for, any workarounds
 
-## Phase 3: Fetch Missing Data
+Cross-check against `$TRACKER_DATA.all_tracked_numbers` — skip issues already tracked.
 
-For each issue, fetch current metadata to fill gaps the conversation didn't cover:
+If no new issues found, tell the user: "No new issues found in this conversation to add."
+Then **STOP**.
+
+**acceptance_criteria:** List of new issues identified with owner/repo/number for each.
+
+</step>
+
+<step name="fetch_metadata">
+
+## Step 3: Fetch Missing Data
+
+For each identified issue, fetch current metadata to fill gaps the conversation didn't cover:
 
 ```bash
 gh api repos/OWNER/REPO/issues/NUMBER --jq '{title: .title, state: .state, labels: [.labels[].name], comments: .comments, created: (.created_at | split("T")[0])}'
@@ -36,7 +58,15 @@ gh api repos/OWNER/REPO/issues/NUMBER --jq '{title: .title, state: .state, label
 
 Run all fetches in parallel.
 
-## Phase 4: Confirm and Write
+**acceptance_criteria:** Metadata fetched for all identified issues.
+
+</step>
+
+<step name="confirm_and_write" priority="must-execute">
+
+## Step 4: Confirm and Write
+
+**MANDATORY — DO NOT SKIP THIS STEP.**
 
 1. Build new tracker entries following the format in `references/tracker-schema.md`.
    Match the style of existing entries in the tracker exactly.
@@ -48,5 +78,10 @@ Run all fetches in parallel.
      - "Yes, add them"
      - "Let me edit first"
      - "Cancel"
-4. If confirmed, append the new entries to the `## Active Issues (watching for updates)` section.
+4. If confirmed, read the current tracker file, append new entries to the
+   `## Active Issues (watching for updates)` section, and write it back.
 5. Report what was added.
+
+**acceptance_criteria:** New issues appended to tracker file (or explicitly cancelled by user).
+
+</step>
