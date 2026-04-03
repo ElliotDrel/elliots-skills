@@ -21,6 +21,8 @@ Use `gh` CLI to check status. This file helps morning check-ins go faster.
   - **#NUMBER** — @author, "Title" (date). Why it's related.
 - **Next steps (now):** Immediate actions to take this check-in.
 - **Future:** Things to monitor or do later.
+- **History:**
+  - **YYYY-MM-DD:** Filed issue (or "Added to tracker for monitoring")
 -->
 
 ## Closed / Resolved

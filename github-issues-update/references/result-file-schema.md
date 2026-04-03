@@ -207,6 +207,20 @@ Optional lines:
 new_duplicate: #NUMBER — @author, "Title" (date). Why related. [duplicate|adjacent]
 ```
 
+History entry lines (one per notable event — include at least one per check-in):
+```
+history_entry: YYYY-MM-DD | Description of action or event
+```
+
+Multiple `history_entry` lines are allowed (one per event). These are appended to the
+issue's `**History:**` section by `update-tracker` and written fresh by `build-tracker`.
+
+**What to log as history entries:**
+- Our actions: "Posted comment with workaround", "Filed issue", "Added duplicate reference"
+- External events: "Maintainer @user replied with fix proposal", "State changed to closed", "PR #123 merged"
+- Routine check-ins: "Check-in: no new activity", "New activity: @user replied (brief summary)"
+- Keep descriptions specific — same quality bar as role/next-steps. No generic "Updated issue".
+
 ---
 
 ### ## Key Context
