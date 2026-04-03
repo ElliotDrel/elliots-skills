@@ -3,8 +3,9 @@
 Adds issues from the current conversation to the tracker file. Designed to be run
 in a chat where the user has been creating or discussing GitHub issues.
 
-**Prerequisites loaded by router:** `$TRACKER_DATA` (parsed JSON from `parse-tracker`),
-`$SKILL_DIR` (skill directory path), `$TRACKER_PATH` (tracker file path).
+**Prerequisites loaded by router:** `$STARTUP` (JSON from `startup` command containing
+auth, username, tracker_data), `$SKILL_DIR` (skill directory path),
+`$TRACKER_PATH` (tracker file path).
 
 ---
 
@@ -12,12 +13,12 @@ in a chat where the user has been creating or discussing GitHub issues.
 
 ## Step 1: Understand the Tracker
 
-The tracker has already been parsed by the router via `parse-tracker`. Use `$TRACKER_DATA` to:
-- Learn which issues are already tracked (`all_tracked_numbers`) — avoid duplicates
-- Get the GitHub `username` from the parsed data
+The tracker has already been parsed by the startup command. Use `$STARTUP` to:
+- Learn which issues are already tracked (`$STARTUP.tracker_data.all_tracked_numbers`) — avoid duplicates
+- Get the GitHub username (`$STARTUP.username`)
 - Understand the existing entry format by reading `references/tracker-schema.md`
 
-**acceptance_criteria:** `$TRACKER_DATA` loaded with username and tracked issue list.
+**acceptance_criteria:** `$STARTUP` loaded with username and tracked issue list.
 
 </step>
 
@@ -37,7 +38,7 @@ For each issue found, extract what you can from the conversation:
 - The user's role (usually Author if they just created it)
 - Key context: why they filed it, what they're watching for, any workarounds
 
-Cross-check against `$TRACKER_DATA.all_tracked_numbers` — skip issues already tracked.
+Cross-check against `$STARTUP.tracker_data.all_tracked_numbers` — skip issues already tracked.
 
 If no new issues found, tell the user: "No new issues found in this conversation to add."
 Then **STOP**.
