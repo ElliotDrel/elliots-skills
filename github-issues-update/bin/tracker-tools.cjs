@@ -338,7 +338,6 @@ function compileOverviewReport(tempDir, date) {
   // ── No Activity ──
   if (noActivity.length > 0) {
     report += '### No Activity\n\n';
-    report += `These ${noActivity.length} issue${noActivity.length === 1 ? ' has' : 's have'} been quiet since your last check. Here's where each one stands and what to watch for.\n\n`;
     for (const r of noActivity) {
       report += buildQuietIssueBlock(r);
     }
@@ -467,27 +466,25 @@ function buildQuietIssueBlock(r) {
   let block = '';
   block += `#### ${r.meta.owner}/${r.meta.repo}#${r.meta.number} — ${r.meta.title}\n`;
   const lastDate = r.meta.last_comment_date || r.meta.last_check_date || 'unknown';
-  block += `*Last activity: ${lastDate}*\n\n`;
+  block += `- Last activity: ${lastDate}\n`;
 
-  // Plain English summary so you know where it stands
+  // Keep quiet issues compact to avoid report bloat.
   const summary = extractSection(r.body, 'Status Summary');
   if (summary) {
-    block += `${summary.trim()}\n\n`;
+    block += `- Status: ${firstLine(summary)}\n`;
   }
 
-  // Still show next steps even for quiet issues
   const steps = extractSection(r.body, 'Next Steps');
   if (steps) {
-    block += `**What to do next:**\n${steps}\n\n`;
+    block += `- Next: ${firstLine(steps)}\n`;
   }
 
-  // Watch For
   const watch = extractSection(r.body, 'Watch For');
   if (watch) {
-    block += `**Watch for:**\n${watch}\n\n`;
+    block += `- Watch: ${firstLine(watch)}\n`;
   }
 
-  block += '---\n\n';
+  block += '\n';
   return block;
 }
 
@@ -499,6 +496,12 @@ function extractSection(body, headerPattern) {
   );
   const match = body.match(re);
   return match ? match[1].trim() : null;
+}
+
+function firstLine(text) {
+  if (!text) return '';
+  const line = text.split(/\r?\n/).find(l => l.trim().length > 0) || '';
+  return line.replace(/^\s*[-*]\s*/, '').trim();
 }
 
 // ─── Tracker Updater ────────────────────────────────────────────────────────

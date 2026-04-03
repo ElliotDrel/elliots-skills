@@ -97,38 +97,10 @@ Spawn **ONE Agent per batch** (not one per issue). Each agent's prompt MUST incl
     - If `state_changed` is true: `history_entry: YYYY-MM-DD | State changed to {open|closed}`
     - If new duplicates found: `history_entry: YYYY-MM-DD | Found duplicate #NUMBER`
     - If the agent recommends posting a comment: `history_entry: YYYY-MM-DD | Check-in review completed`
-    - If no activity and no changes: `history_entry: YYYY-MM-DD | Check-in: no new activity`
 
-Include these QUALITY EXAMPLES directly in each agent prompt:
-
-```
-QUALITY REQUIREMENTS — read these before writing any result file:
-
-Role description:
-  BAD:  "Author"
-  GOOD: "Author (filed with 3 crash instances, upstream tracking in bun#28175)"
-
-What to check:
-  BAD:  "Monitor for maintainer engagement"
-  GOOD: "PRs modifying `renameSession` or `custom-title` handling; JSONL title write logic changes"
-
-Workarounds:
-  BAD:  "Use different server names"
-  GOOD: "Name servers differently (`slack-buildpurdue`, `slack-keel`) at user scope via `claude mcp add-json`"
-
-Duplicate reasoning:
-  BAD:  "#40693 — related rename issue"
-  GOOD: "#40693 — VS Code UI blocking during rename. Shares symptoms but different root cause:
-         UI thread vs JSONL write. Adjacent, not duplicate."
-
-Key technical data:
-  BAD:  "Memory leak reported"
-  GOOD: "@kolkov's mimalloc analysis: ~1GB/h growth, traced to arena retention in bun's GC cycle"
-
-Next steps:
-  BAD:  "Follow up"
-  GOOD: "Post memory profiling data from session replay showing 1.2GB peak at 45min mark"
-```
+Do not inline quality examples in the prompt. Instead, instruct each batch agent to
+follow the canonical quality guidance in `references/result-file-schema.md`
+(Role Field Guidance and section BAD/GOOD examples).
 
 Wait for all agents. Verify file count matches active_issues count:
 ```bash

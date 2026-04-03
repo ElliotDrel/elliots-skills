@@ -10,8 +10,7 @@ differences are noted inline with `(setup)`, `(check-in)`, or `(both)`.
 
 ## Filename Convention
 
-- Setup: `issue-OWNER-REPO-NUMBER.md`
-- Check-in: `issue-OWNER-REPO-NUMBER.md`
+- Result files: `issue-OWNER-REPO-NUMBER.md` (both setup and check-in)
 - Raw data (written by `fetch-issues`): `raw-OWNER-REPO-NUMBER.json`
 
 ---
@@ -226,7 +225,7 @@ issue's `**History:**` section by `update-tracker` and written fresh by `build-t
 **What to log as history entries:**
 - Our actions: "Posted comment with workaround", "Filed issue", "Added duplicate reference"
 - External events: "Maintainer @user replied with fix proposal", "State changed to closed", "PR #123 merged"
-- Routine check-ins: "Check-in: no new activity", "New activity: @user replied (brief summary)"
+- Only log when something happened — don't write "no new activity" entries
 - Keep descriptions specific — same quality bar as role/next-steps. No generic "Updated issue".
 
 ---
