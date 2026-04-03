@@ -27,6 +27,11 @@ must_haves:
     - "Duplicate search runs for all issues not just authored"
     - "Auto-include obviously related closed issues"
     - "Summary-based confirmation for >10 issues in setup"
+    - "Result file schema has GOOD vs BAD examples for role, what-to-check, workarounds, dupes, key data, next steps"
+    - "Analysis agent prompts include QUALITY EXAMPLES block in both check-issues and setup"
+    - "Verification agent checks for shallow-output patterns (generic language, missing sections)"
+    - "fetch-issues extracts cross_references and urls from body/comments into raw JSON"
+    - "Synthesis agent checks for untracked cross-references"
   artifacts:
     - path: "github-issues-update/bin/tracker-tools.cjs"
       provides: "startup, fetch-issues, build-tracker commands"
@@ -94,13 +99,51 @@ for BOTH setup deep-dives and check-in reviews. This is the contract that fetch-
 and that compile-report / build-tracker both consume.
 
 The format must include:
-- Frontmatter fields: type (always "issue"), owner, repo, number, title, state, state_changed
+
+**Frontmatter fields:**
+- type (always "issue"), owner, repo, number, title, state, state_changed
   (bool, false for setup), labels, has_activity (bool, false for setup), role, filed,
   last_check_date (null for setup), last_commenter, last_comment_date, comment_count
-- Body sections: ## Status Summary, ## Key Technical Data, ## Activity (new comments or
-  "Initial review" for setup), ## Duplicates and Related (### Known — updates, ### New finds),
-  ## Upstream, ## Next Steps, ## Watch For, ## Tracker Updates (with status_summary,
-  what_to_check, new_duplicate lines), ## Key Context (workarounds, severity, competing PRs)
+
+**Role field guidance (CRITICAL for quality):**
+The role field MUST describe what the user DID, not just a label.
+Include GOOD vs BAD examples directly in the schema:
+  BAD:  "Author"
+  GOOD: "Author (filed with 3 crash instances, upstream tracking in bun#28175, posted workaround)"
+  BAD:  "Commenter"
+  GOOD: "Commenter (confirmed bug + posted workaround with exact `callbackPort: 3118` fix)"
+
+**Body sections (all REQUIRED unless marked optional):**
+- ## Status Summary — 2-3 sentences with specific technical details, not generic descriptions
+- ## Key Technical Data (REQUIRED, not optional) — Concrete data points from body/comments:
+  error codes, memory addresses, API parameters, config paths, version numbers, stack traces,
+  test counts, file lists. This section should contain the raw facts someone would need to
+  discuss this issue knowledgeably. Include verbatim error messages and exact commands.
+- ## External Links (REQUIRED) — All URLs found in body/comments: fork repos, PR links,
+  workaround documentation, tool links, upstream references. If none found, say "None found."
+- ## Activity (new comments or "Initial review" for setup)
+- ## Duplicates and Related (### Known — updates, ### New finds) — For EACH duplicate or
+  related issue, explain whether it shares a ROOT CAUSE or just SYMPTOMS. Use labels:
+  "duplicate" (same root cause), "adjacent" (related area, different problem).
+  Include GOOD vs BAD examples:
+    BAD:  "#40693 — related rename issue"
+    GOOD: "#40693 — VS Code UI blocking during rename. Shares symptoms (rename fails) but
+           root cause is different: UI thread blocking vs JSONL write. Adjacent, not duplicate."
+- ## Competing PRs (if applicable) — When multiple PRs exist for the same issue, compare
+  approaches: which supersedes, what semantic differences exist, downstream effects.
+- ## Upstream — upstream dependency status or "N/A"
+- ## Cross-References — ALL issue numbers mentioned in body and comments (even if not tracked).
+  These may reveal related issues not yet in the tracker.
+- ## Next Steps — MUST be specific, not generic.
+    BAD:  "Monitor for maintainer engagement"
+    GOOD: "Respond to @maintainer's request for memory profiling data from session replay"
+- ## Watch For — MUST name specific signals.
+    BAD:  "Watch for updates"
+    GOOD: "PRs modifying `renameSession` or `custom-title` handling; JSONL title write logic changes"
+- ## Tracker Updates (with status_summary, what_to_check, new_duplicate lines)
+- ## Key Context — workarounds (EXACT commands, not paraphrases), severity signals, competing PRs.
+    BAD:  "Use different server names"
+    GOOD: "Name servers differently (`slack-buildpurdue`, `slack-keel`) at user scope via `claude mcp add-json`"
 
 Note at top: "This format is consumed by both `compile-report` and `build-tracker` commands.
 Agent analysis writes this format to temp dir. The script commands read it."
@@ -175,9 +218,13 @@ Steps:
    - Upstream state check (if upstream exists)
    Use Promise.all with batching — max 15 concurrent requests to avoid rate limits.
    Use the execAsync helper from startup.
-3. Write raw data to temp dir as one JSON file per issue: `raw-OWNER-REPO-NUMBER.json`
-   containing `{ metadata, body, comments, dupe_states, upstream_state }`.
-4. Return JSON: `{ fetched: N, files: [...paths], errors: [...] }`
+3. Post-process: For each issue, extract from body + comments:
+   - `cross_references`: all `#NUMBER` patterns found in text (potential related issues)
+   - `urls`: all URLs found in text (fork repos, PR links, external tools, workaround docs)
+   These are stored alongside the raw data so analysis agents have them readily available.
+4. Write raw data to temp dir as one JSON file per issue: `raw-OWNER-REPO-NUMBER.json`
+   containing `{ metadata, body, comments, dupe_states, upstream_state, cross_references, urls }`.
+5. Return JSON: `{ fetched: N, files: [...paths], errors: [...] }`
 
 **Command 3: `build-tracker`**
 Usage: `tracker-tools.cjs build-tracker --temp-dir <dir> --template <path> --username <name> --tracker <output-path> [--closed-json <path>]`
@@ -288,14 +335,46 @@ Rewrite check-issues.md with these changes. Prerequisites now receive `$STARTUP`
   - The result file schema reference (inline or via file path).
   - For each issue: owner, repo, number, title, role, last_check_date, username,
     all_tracked_numbers (for filtering duplicate search results).
-  - The extract-specifics instruction (same as current — error codes, stack traces, etc.).
+  - The `cross_references` and `urls` arrays from the raw JSON — use these to populate
+    the ## Cross-References and ## External Links sections.
   - Instruction to search for NEW duplicates for ALL issues in the batch (not just authored).
+    Search by SYMPTOMS and ERROR MESSAGES, not just title keywords.
     Run keyword searches per issue. Also flag any obviously related closed issues from
     `$STARTUP.recently_closed`.
   - Auto-include instruction: If a recently_closed issue is obviously related to an active
     issue (same topic, same repo, referenced in comments), note it in the Duplicates section.
+  - For duplicates/adjacent: explain whether shared ROOT CAUSE or just SYMPTOMS.
   - MANDATORY: Write one result file per issue to `$TEMP_DIR/issue-OWNER-REPO-NUMBER.md`
     using the standardized format from references/result-file-schema.md.
+  - Include these QUALITY EXAMPLES directly in the prompt:
+    ```
+    QUALITY REQUIREMENTS — read these before writing any result file:
+
+    Role description:
+      BAD:  "Author"
+      GOOD: "Author (filed with 3 crash instances, upstream tracking in bun#28175)"
+
+    What to check:
+      BAD:  "Monitor for maintainer engagement"
+      GOOD: "PRs modifying `renameSession` or `custom-title` handling; JSONL title write logic changes"
+
+    Workarounds:
+      BAD:  "Use different server names"
+      GOOD: "Name servers differently (`slack-buildpurdue`, `slack-keel`) at user scope via `claude mcp add-json`"
+
+    Duplicate reasoning:
+      BAD:  "#40693 — related rename issue"
+      GOOD: "#40693 — VS Code UI blocking during rename. Shares symptoms but different root cause:
+             UI thread vs JSONL write. Adjacent, not duplicate."
+
+    Key technical data:
+      BAD:  "Memory leak reported"
+      GOOD: "@kolkov's mimalloc analysis: ~1GB/h growth, traced to arena retention in bun's GC cycle"
+
+    Next steps:
+      BAD:  "Follow up"
+      GOOD: "Post memory profiling data from session replay showing 1.2GB peak at 45min mark"
+    ```
 - Wait for all agents. Verify file count matches active_issues count.
 
 **Step 4: Cross-issue synthesis**
@@ -304,7 +383,9 @@ Rewrite check-issues.md with these changes. Prerequisites now receive `$STARTUP`
   across all issues for: (1) Clusters — issues that are related or affect the same area,
   (2) Contradictions — conflicting information across issues, (3) Gaps — issues missing
   data or with stale information, (4) Priority signals — which issues need attention most
-  urgently. Write your synthesis to `$TEMP_DIR/synthesis.md` with sections for each."
+  urgently, (5) Untracked cross-references — check if any issue numbers found in
+  ## Cross-References sections point to issues NOT in the tracker. List them as potential
+  tracking candidates. Write your synthesis to `$TEMP_DIR/synthesis.md` with sections for each."
 - The compile-report step will read this synthesis and append it to the report.
 
 **Step 5: Compile and present report** (same as current Step 3, but also):
@@ -317,11 +398,21 @@ Rewrite check-issues.md with these changes. Prerequisites now receive `$STARTUP`
 **Step 6: Verification agent**
 - Spawn ONE Agent after report compilation.
 - Prompt: "Use the Read tool to read the compiled report at `$TEMP_DIR/_compiled-report.md`.
-  Then read each issue result file in `$TEMP_DIR/issue-*.md`. Verify: (1) Every active issue
-  has a corresponding section in the report, (2) No data was lost — key findings from result
-  files appear in the report, (3) All new_issues and reopened_issues are mentioned. Write
-  verification result to `$TEMP_DIR/verification.md` with pass/fail and any gaps found."
-- If verification finds gaps, warn the user before presenting the report.
+  Then read each issue result file in `$TEMP_DIR/issue-*.md`. Verify:
+  (1) Every active issue has a corresponding section in the report.
+  (2) No data was lost — key findings from result files appear in the report.
+  (3) All new_issues and reopened_issues are mentioned.
+  (4) QUALITY CHECK — flag any of these shallow-output patterns:
+      - 'What to check' that only says 'Monitor for maintainer' or similar generic phrase
+      - Missing '## Key Technical Data' section or section that says only 'N/A'
+      - Role field that is a single word ('Author', 'Commenter') without contribution description
+      - Duplicate listed without WHY reasoning (root cause vs symptoms)
+      - 'Next steps' that says only 'Follow up' or 'Monitor' without specifics
+      - Missing '## External Links' section when the issue body/comments clearly contain URLs
+      - Workarounds described generically instead of with exact commands
+  Write verification result to `$TEMP_DIR/verification.md` with: pass/fail, data gaps,
+  and a 'Quality Flags' section listing any shallow-output issues found."
+- If verification finds gaps OR quality flags, warn the user before presenting the report.
 
 **Step 7: Confirm and execute actions** (same as current Step 4)
 
@@ -394,8 +485,13 @@ new_issues populated as discovery results), `$SKILL_DIR`, `$TRACKER_PATH`.
 **Step 4: Batched analysis agents**
 - Same pattern as check-issues Task 4: group into batches of ~5, spawn one Agent per batch.
 - Each agent reads raw data files via Read tool, analyzes, writes standardized result files.
-- Duplicate search for ALL issues (not just authored).
+- Duplicate search for ALL issues (not just authored). Search by SYMPTOMS and ERROR MESSAGES,
+  not just title keywords.
 - Agent prompt references result-file-schema.md for output format.
+- Agent prompt MUST include the same QUALITY EXAMPLES block as check-issues (GOOD vs BAD
+  for role descriptions, what to check, workarounds, duplicate reasoning, key technical data,
+  next steps). This is where v3 lost the most depth — the setup deep dive is the critical path
+  for tracker quality. The examples are non-negotiable.
 
 **Step 5: Build tracker via script** (replaces old manual Step 6)
 - Run build-tracker:
@@ -482,7 +578,10 @@ After all tasks complete:
 - setup.md contains "startup", "fetch-issues", "build-tracker", "compile-report"
 - setup.md does NOT contain "gh auth status", "ask the user for their GitHub username", or "discovery subagent"
 - save-issues.md references $STARTUP, not $TRACKER_DATA
-- result-file-schema.md exists with unified format
+- result-file-schema.md exists with unified format AND contains GOOD/BAD examples
+- check-issues.md and setup.md analysis agent prompts contain "QUALITY REQUIREMENTS" block
+- check-issues.md verification agent prompt contains "Quality Flags" check
+- fetch-issues raw JSON files contain cross_references and urls arrays
 </success_criteria>
 
 <output>
