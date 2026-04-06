@@ -36,6 +36,9 @@ Every script command returns a `today` field like `today's date is **2026-04-05*
 Extract the date from this string. If you see multiple `today` values in your context
 (from earlier commands), always use the most recent one.
 
+**stdout/stderr convention:** `compile-report` outputs the report text to stdout and
+metadata (including `today`) to stderr. Parse accordingly.
+
 **Tracker file:** `$HOME/OneDrive/Documents/github-tracker.md`
 This is the AI's knowledge base and source of truth. It stores everything in full detail:
 
@@ -47,7 +50,7 @@ This is the AI's knowledge base and source of truth. It stores everything in ful
 
 The tracker is written FOR the AI — keep it detailed. When the user asks questions about
 any issue, read the tracker first. It should have enough context to answer without
-re-fetching from GitHub. The user-facing report (Step 4a) is a separate, concise summary.
+re-fetching from GitHub. The user-facing report (Step 5a) is a separate, concise summary.
 
 **References:**
 
@@ -59,7 +62,7 @@ re-fetching from GitHub. The user-facing report (Step 4a) is a separate, concise
 
 <flow>
 
-The skill runs the same four steps every time. The tracker determines depth — an empty
+The skill runs the same steps every time. The tracker determines depth — an empty
 tracker means everything is new and needs deep analysis. A fresh tracker means most
 issues just need a quick diff check.
 
@@ -72,6 +75,8 @@ issues just need a quick diff check.
    ```
 3. Store the full response as `$STARTUP`. The script handles auth checking and temp dir
    creation. If `auth` is false, show the user the `error` message from the output and STOP.
+   If `search_errors` is non-empty, warn the user that some discovery queries failed —
+   the results may be incomplete.
 4. Extract `$TODAY` (the YYYY-MM-DD date) from the `$STARTUP.today` string — use this as today's date for everything.
 5. Extract `$TEMP_DIR` from `$STARTUP.temp_dir`.
 6. Extract `$CONFIG` from `$STARTUP.config`. This is the user's plain English config
@@ -96,13 +101,14 @@ apply them when filtering issues throughout this step. For example, if config sa
 "Excluded repos: ElliotDrel/*", skip any issues from repos owned by ElliotDrel.
 
 If `$CONFIG` is null (tracker has no Config section), ask the user if they want to set
-one up (which repos to track/exclude). Add it to the tracker during Step 4c.
+one up (which repos to track/exclude). The agent writes Config directly to the tracker
+file via the Edit tool (not through the script). The script reads Config; the agent writes it.
 
 **If tracker doesn't exist or has no issues** (first run):
 
 - Show `new_issues` grouped by repo. List which repos were found.
 - Ask: "Which repos do you want to track? You can also exclude any."
-- Save their choices to the `## Config` section when building the tracker.
+- Save their choices to the `## Config` section by writing directly to the tracker via Edit.
 - Then ask which specific issues to track from the included repos.
 
 **If tracker exists with issues:**
@@ -112,6 +118,8 @@ one up (which repos to track/exclude). Add it to the tracker during Step 4c.
   found and add them to the analysis list.
 - If `reopened_issues` is non-empty, add them back to the active analysis list and
   note in your report that they were reopened (state changed from closed to open).
+  The agent should manually move reopened issues from the Closed section back to
+  Active in the tracker, preserving any context from the closed entry.
 
 Write the final issue list to `$TEMP_DIR/issues-to-fetch.json` for the fetch command.
 Each entry needs: `owner`, `repo`, `number`, `title`, `role`, `last_check_date`
@@ -162,7 +170,7 @@ This means every run progressively improves the tracker's completeness. Include 
 newly populated fields in the result file's `## Tracker Updates` section.
 
 **Exception — fields that require user input:** The **Goal** field must be asked, not
-guessed. If an issue is missing a Goal, flag it in the result file so Step 4b can
+guessed. If an issue is missing a Goal, flag it in the result file so Step 5b can
 collect them. Same for Config — never assume repo exclusions or preferences, always ask.
 
 Each agent prompt must include:
@@ -183,7 +191,40 @@ ls "$TEMP_DIR"/issue-*.md 2>/dev/null | wc -l
 
 ---
 
-## Step 3: Advise
+## Step 3: Save
+
+**Goal:** Immediately persist all factual data from the analysis to the tracker.
+
+This step is **mandatory and automatic** — no user permission needed. The analysis just
+finished and the result files contain factual data from the GitHub API. This step caches
+that data in the tracker so that even if the conversation is interrupted after this point,
+the tracker has the latest information.
+
+**If this is the first run** (no tracker existed):
+
+```bash
+node "$SKILL_DIR/bin/tracker-tools.cjs" build-tracker --temp-dir "$TEMP_DIR" --template "$SKILL_DIR/tracker-template.md" --username "$USERNAME" --tracker "$TRACKER_PATH" --date "$TODAY"
+```
+
+**If the tracker already exists:**
+
+```bash
+node "$SKILL_DIR/bin/tracker-tools.cjs" update-tracker --tracker "$TRACKER_PATH" --temp-dir "$TEMP_DIR" --date "$TODAY"
+```
+
+This saves: status dates, new comments, new duplicates, filled data gaps, state changes.
+
+**Every tracker update must be logged in History.** Every change the script makes to the
+tracker — new fields populated, status updates, new duplicates found — gets a history
+entry on the affected issue. The History section is an append-only audit trail. Examples:
+- `**2026-04-06:** Check-in: no new activity`
+- `**2026-04-06:** Filled in missing Workaround and Key technical data fields`
+- `**2026-04-06:** Found new duplicate #45123`
+- `**2026-04-06:** Status changed: open → closed`
+
+---
+
+## Step 4: Advise
 
 **Goal:** Identify concrete next steps for each issue before presenting the report.
 
@@ -203,18 +244,19 @@ Collect all next steps. These get included in the report output.
 
 ---
 
-## Step 4: Report and Act
+## Step 5: Report and Act
 
 **Goal:** Show the user what's going on and help them take action.
 
-### 4a: Compile and present report
+### 5a: Report
 
 ```bash
 node "$SKILL_DIR/bin/tracker-tools.cjs" compile-report --temp-dir "$TEMP_DIR" --date "$TODAY"
 ```
 
-The script reads all result files and outputs the report. Use the script output as raw
-data, but present the report to the user in YOUR response using the format below.
+The script outputs the report text to stdout and metadata (including `today`) to stderr.
+Use the stdout output as raw data, but present the report to the user in YOUR response
+using the format below.
 
 **Report format — keep it tight and actionable:**
 
@@ -243,48 +285,29 @@ Skip GitHub spam (bot comments, auto-close noise, label changes). Use bullets, n
 Do NOT list every single issue with its full status. Only mention issues where
 something happened or something needs to happen. Group quiet issues into one line.
 
-### 4b: Collect missing user input and act
+### 5b: Collect missing Goals
 
-**First, ask for any missing Goals.** If result files flagged issues without a Goal,
-present them to the user grouped by repo and ask what their intent is for each.
-Example: "These issues don't have a goal set yet — what are you hoping for with each?"
+If result files flagged issues without a Goal, present them to the user grouped by repo
+and ask what their intent is for each. Example: "These issues don't have a goal set
+yet — what are you hoping for with each?"
 
-**Then, present actionable items:**
+Once the user provides goals, write them directly to the tracker file via the Edit tool
+(not through the script). Add a history entry for each goal set:
+- `**2026-04-06:** Goal set: "Get maintainer to respond"`
+
+### 5c: Act on next steps
+
+Present actionable items to the user:
 
 - If there are comments to post, issues to link, or other actions: ask the user
   "Want me to act on these next steps?" and list what you'd do.
 - If the user approves, execute the actions (post comments via `gh issue comment`, etc.)
-  and record them in the result files as history entries.
+  and write action results directly to the tracker via the Edit tool. Add history entries:
+  - `**2026-04-06:** Posted comment on #1234 linking to duplicate #5678`
+  - `**2026-04-06:** Added Config section to tracker (excluded: ElliotDrel/*)`
 - If no actions needed, just say so.
 
-### 4c: Update tracker
-
-Ask: "Want me to update the tracker with today's findings?"
-
-If yes and this is the first run (no tracker existed), use build-tracker:
-
-```bash
-node "$SKILL_DIR/bin/tracker-tools.cjs" build-tracker --temp-dir "$TEMP_DIR" --template "$SKILL_DIR/tracker-template.md" --username "$USERNAME" --tracker "$TRACKER_PATH"
-```
-
-If yes and the tracker already exists, use update-tracker:
-
-```bash
-node "$SKILL_DIR/bin/tracker-tools.cjs" update-tracker --tracker "$TRACKER_PATH" --temp-dir "$TEMP_DIR" --date "$TODAY"
-```
-
-Report what changed.
-
-**Every tracker update must be logged in History.** Every change the skill makes to the
-tracker — new fields populated, status updates, new duplicates found, config added,
-goals set — gets a history entry on the affected issue. The History section is an
-append-only audit trail. Examples:
-- `**2026-04-06:** Check-in: no new activity`
-- `**2026-04-06:** Filled in missing Goal and Workaround fields`
-- `**2026-04-06:** Added Config section to tracker (excluded: ElliotDrel/*)`
-- `**2026-04-06:** Found new duplicate #45123`
-
-### 4d: Cleanup
+### 5d: Cleanup
 
 ```bash
 rm -rf "$TEMP_DIR"

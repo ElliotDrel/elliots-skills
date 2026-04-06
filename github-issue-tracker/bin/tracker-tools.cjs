@@ -21,9 +21,13 @@ const path = require('path');
 const os = require('os');
 const { exec, execSync } = require('child_process');
 
+function localDate() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 function todayTag() {
-  const d = new Date().toISOString().split('T')[0];
-  return `today's date is **${d}**, ignore earlier dates`;
+  return `today's date is **${localDate()}**, ignore earlier dates`;
 }
 
 // ─── CLI Router ─────────────────────────────────────────────────────────────
@@ -187,7 +191,7 @@ function parseIssueBlock(block) {
   };
 
   // Extract last check date from "Status as of YYYY-MM-DD:"
-  const dateMatch = block.match(/\*\*Status as of (\d{4}-\d{2}-\d{2})\*\*/);
+  const dateMatch = block.match(/\*\*Status as of (\d{4}-\d{2}-\d{2}):\*\*/);
   if (dateMatch) issue.last_check_date = dateMatch[1];
 
   // Extract History field (multi-line: bullet list under **History:**)
@@ -197,6 +201,12 @@ function parseIssueBlock(block) {
 }
 
 function extractField(block, fieldName) {
+  // Special case: "Status as of YYYY-MM-DD:" has the date embedded in the bold
+  if (fieldName === 'Status as of') {
+    const statusRe = /\*\*Status as of \d{4}-\d{2}-\d{2}:\*\*\s*(.+)/i;
+    const statusMatch = block.match(statusRe);
+    return statusMatch ? statusMatch[1].trim() : null;
+  }
   const re = new RegExp(`\\*\\*${fieldName}(?:\\s+\\S+)?[.:]*\\*\\*\\s*(.+)`, 'i');
   const match = block.match(re);
   return match ? match[1].trim() : null;
@@ -256,7 +266,7 @@ function extractHistoryField(block) {
       continue;
     }
     // Match indented date bullets: "  - **YYYY-MM-DD:** ..."
-    const bullet = line.match(/^\s+-\s+(\*\*\d{4}-\d{2}-\d{2}\*\*:.+)/);
+    const bullet = line.match(/^\s+-\s+(\*\*\d{4}-\d{2}-\d{2}:\*\*.+)/);
     if (bullet) {
       entries.push(bullet[1].trim());
     } else if (line.match(/^- \*\*[A-Z]/) || line.match(/^### /)) {
@@ -299,15 +309,12 @@ function compileOverviewReport(tempDir, date) {
   }
 
   const issueResults = [];
-  let generalResult = null;
 
   for (const file of files) {
     const content = fs.readFileSync(path.join(tempDir, file), 'utf8');
     const { meta, body } = parseFrontmatter(content);
 
-    if (meta.type === 'general') {
-      generalResult = { meta, body };
-    } else if (meta.type === 'issue') {
+    if (meta.type === 'issue') {
       issueResults.push({ meta, body, file });
     }
   }
@@ -349,35 +356,6 @@ function compileOverviewReport(tempDir, date) {
     report += '### No Activity\n\n';
     for (const r of noActivity) {
       report += buildQuietIssueBlock(r);
-    }
-  }
-
-  // ── General Check Sections ──
-  if (generalResult) {
-    const body = generalResult.body;
-
-    // New Issues
-    const newIssuesSection = extractSection(body, 'New Issues');
-    if (newIssuesSection && newIssuesSection.trim() !== 'None') {
-      report += '### New Issues Not in Tracker\n\n';
-      report += 'These issues involve you but aren\'t being tracked yet. Consider adding them.\n\n';
-      report += newIssuesSection + '\n\n---\n\n';
-    } else {
-      report += `### New Issues Not in Tracker\n\nNo new issues found since last check.\n\n---\n\n`;
-    }
-
-    // Reopened
-    const reopenedSection = extractSection(body, 'Reopened');
-    if (reopenedSection && reopenedSection.trim() !== 'None') {
-      report += '### Reopened Issues\n\n';
-      report += reopenedSection + '\n\n---\n\n';
-    }
-
-    // Closed Status
-    const closedSection = extractSection(body, 'Closed Status');
-    if (closedSection) {
-      report += '### Closed Issues Status\n\n';
-      report += closedSection + '\n\n---\n\n';
     }
   }
 
@@ -545,7 +523,7 @@ function applyTrackerUpdates(trackerContent, tempDir, date) {
       const statusLine = trackerUpdates.match(/^status_summary:\s*(.+)/m);
       if (statusLine) {
         section = section.replace(
-          /\*\*Status as of \d{4}-\d{2}-\d{2}\*\*:\s*.+/,
+          /\*\*Status as of \d{4}-\d{2}-\d{2}:\*\*\s*.+/,
           `**Status as of ${date}:** ${statusLine[1].trim()}`
         );
       }
@@ -579,10 +557,42 @@ function applyTrackerUpdates(trackerContent, tempDir, date) {
 
     // Handle state change: open → closed (move to Closed section)
     if (meta.state === 'closed' && meta.state_changed) {
+      // Preserve key fields from the original section before removing it
+      const closedLines = [];
+      closedLines.push(`### ${issueKey} — ${meta.title}`);
+      closedLines.push(`- Closed as of ${date}. ${meta.close_reason || ''}`);
+
+      // Preserve Goal
+      const goalMatch = originalSection.match(/- \*\*Goal:\*\*\s*(.+)/);
+      if (goalMatch) closedLines.push(`- **Goal:** ${goalMatch[1].trim()}`);
+
+      // Preserve Role
+      const roleMatch = originalSection.match(/- \*\*Role:\*\*\s*(.+)/);
+      if (roleMatch) closedLines.push(`- **Role:** ${roleMatch[1].trim()}`);
+
+      // Preserve History section
+      const historyIdx = originalSection.indexOf('- **History:**');
+      if (historyIdx !== -1) {
+        const historyBlock = originalSection.slice(historyIdx);
+        const historyLines = historyBlock.split(/\r?\n/);
+        const preserved = [historyLines[0]]; // "- **History:**"
+        for (let hi = 1; hi < historyLines.length; hi++) {
+          if (/^\s+-\s+\*\*\d{4}-\d{2}-\d{2}:\*\*/.test(historyLines[hi])) {
+            preserved.push(historyLines[hi]);
+          } else if (/^- \*\*[A-Z]/.test(historyLines[hi]) || /^### /.test(historyLines[hi])) {
+            break;
+          }
+        }
+        // Add closing history entry
+        preserved.push(`  - **${date}:** Closed. ${meta.close_reason || ''}`);
+        closedLines.push(...preserved);
+      }
+
+      const closedEntry = closedLines.join('\n') + '\n\n';
+
       // Remove from active
       updated = updated.replace(originalSection, '');
       // Add to closed
-      const closedEntry = `### ${issueKey} — ${meta.title}\n- Closed as of ${date}. ${meta.close_reason || ''}\n\n`;
       updated = updated.replace(
         /(## Closed[^\n]*\n)/,
         `$1\n${closedEntry}`
@@ -635,7 +645,7 @@ function applyTrackerUpdates(trackerContent, tempDir, date) {
           const existingLines = afterHeader.split(/\r?\n/);
           const existingTexts = new Set();
           for (const line of existingLines.slice(1)) {
-            const m = line.match(/^\s+-\s+\*\*(\d{4}-\d{2}-\d{2})\*\*:\s*(.+)/);
+            const m = line.match(/^\s+-\s+\*\*(\d{4}-\d{2}-\d{2}):\*\*\s*(.+)/);
             if (m) existingTexts.add(`${m[1]}|${m[2].trim()}`);
             else if (line.match(/^- \*\*[A-Z]/) || line.match(/^### /)) break;
           }
@@ -652,7 +662,7 @@ function applyTrackerUpdates(trackerContent, tempDir, date) {
             const historyLines = historyBlock.split(/\r?\n/);
             let lastBulletLine = 0;
             for (let li = 1; li < historyLines.length; li++) {
-              if (/^\s+-\s+\*\*\d{4}-\d{2}-\d{2}\*\*:/.test(historyLines[li])) {
+              if (/^\s+-\s+\*\*\d{4}-\d{2}-\d{2}:\*\*/.test(historyLines[li])) {
                 lastBulletLine = li;
               } else if (/^- \*\*[A-Z]/.test(historyLines[li]) || /^### /.test(historyLines[li])) {
                 break;
@@ -680,22 +690,6 @@ function applyTrackerUpdates(trackerContent, tempDir, date) {
     if (section !== originalSection) {
       updated = updated.replace(originalSection, section);
       changes.push(`Updated ${issueKey}`);
-    }
-  }
-
-  // Handle new issues from general check
-  const generalFile = files.find(f => f.startsWith('general'));
-  if (generalFile) {
-    const content = fs.readFileSync(path.join(tempDir, generalFile), 'utf8');
-    const { body } = parseFrontmatter(content);
-    const newIssues = extractSection(body, 'New Issues to Add');
-    if (newIssues) {
-      // Append raw entries before the Closed section
-      updated = updated.replace(
-        /(## Closed)/,
-        `${newIssues.trim()}\n\n$1`
-      );
-      changes.push('Added new issues to tracker');
     }
   }
 
@@ -871,17 +865,22 @@ async function cmdStartup(flags) {
 
   let openResults = [];
   let closedResults = [];
+  let searchErrors = [];
+
+  // Run searches individually so one failure doesn't block the other
+  try {
+    const openRaw = await execAsync(`gh api "${openQuery}" --jq ".items"`);
+    openResults = JSON.parse(openRaw || '[]');
+  } catch (err) {
+    searchErrors.push(`open search failed: ${err.message}`);
+    openResults = [];
+  }
 
   try {
-    const [openRaw, closedRaw] = await Promise.all([
-      execAsync(`gh api "${openQuery}" --jq ".items"`),
-      execAsync(`gh api "${closedQuery}" --jq ".items"`),
-    ]);
-    openResults = JSON.parse(openRaw || '[]');
+    const closedRaw = await execAsync(`gh api "${closedQuery}" --jq ".items"`);
     closedResults = JSON.parse(closedRaw || '[]');
   } catch (err) {
-    // Non-fatal: proceed with empty results
-    openResults = [];
+    searchErrors.push(`closed search failed: ${err.message}`);
     closedResults = [];
   }
 
@@ -948,6 +947,7 @@ async function cmdStartup(flags) {
     new_issues: newIssues,
     reopened_issues: reopenedIssues,
     recently_closed: recentlyClosed,
+    search_errors: searchErrors,
   }, null, 2));
 }
 
@@ -1169,6 +1169,7 @@ function cmdBuildTracker(flags) {
   const username = flags.username;
   const trackerPath = flags.tracker;
   const closedJsonPath = flags['closed-json'];
+  const date = flags.date || localDate();
 
   if (!tempDir || !templatePath || !username || !trackerPath) {
     console.error('Usage: build-tracker --temp-dir <dir> --template <path> --username <name> --tracker <path> [--closed-json <path>]');
@@ -1202,7 +1203,7 @@ function cmdBuildTracker(flags) {
     if (meta.type !== 'issue') continue;
 
     // Build tracker entry from result file
-    const entry = buildTrackerEntry(meta, body);
+    const entry = buildTrackerEntry(meta, body, date);
     entries.push(entry);
   }
 
@@ -1246,7 +1247,7 @@ function cmdBuildTracker(flags) {
 /**
  * Build a tracker entry string from result file frontmatter and body.
  */
-function buildTrackerEntry(meta, body) {
+function buildTrackerEntry(meta, body, date) {
   const lines = [];
   lines.push(`### ${meta.owner}/${meta.repo}#${meta.number} — ${meta.title}`);
 
@@ -1275,7 +1276,7 @@ function buildTrackerEntry(meta, body) {
   const statusText = statusLine
     ? statusLine[1].trim()
     : `${meta.state || 'Open'}. Labels: ${labels}. ${statusSummary.split('\n')[0]}`;
-  const dateStr = new Date().toISOString().split('T')[0];
+  const dateStr = date || localDate();
   lines.push(`- **Status as of ${dateStr}:** ${statusText}`);
 
   // What to check — from ## Watch For or tracker updates

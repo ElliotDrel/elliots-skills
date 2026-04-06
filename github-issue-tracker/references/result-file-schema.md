@@ -41,7 +41,7 @@ Good: `"Author (filed with 3 crash instances, posted workaround)"`,
 
 ## Body Sections
 
-### ## Summary
+### ## Status Summary
 
 Plain English: where does this issue stand and why does it matter? Write as if briefing
 someone who hasn't looked at the issue in a week. Include dates, names, numbers.
@@ -76,6 +76,28 @@ Bad: `"#40693 — related rename issue"`
 Good: `"#40693 — VS Code UI blocking during rename. Same symptom (rename fails) but
 different root cause: UI thread blocking vs JSONL write. Adjacent, not duplicate."`
 
+### ## Upstream
+
+Upstream dependency status — is this issue blocked on or related to an upstream fix?
+Write "N/A" if there are no upstream dependencies.
+
+Bad: `"There's an upstream issue."`
+Good: `"Blocked on bun#28175 (open, no activity since Mar 2). Fix landed in Node 22.4 but
+Bun hasn't ported it. No workaround available upstream."`
+
+### ## Cross-References
+
+All issue numbers mentioned in the issue body and comments. Helps the tracker build
+a cross-reference map. List each with a one-line explanation of why it was mentioned.
+
+Bad: `"#100, #200, #300"`
+Good:
+```
+- #28175 — upstream Bun issue causing the root crash
+- #40693 — adjacent rename bug (different root cause, shared symptom)
+- #41022 — PR that attempted a fix but was reverted
+```
+
 ### ## Next Steps
 
 Specific, actionable items driven by the user's **Goal** for this issue (from the tracker).
@@ -87,6 +109,19 @@ Bad: `"Monitor for updates"`, `"Follow up"`
 Good: `"Respond to @maintainer's request for memory profiling data"`,
 `"Test fix in PR #4521 against your reproduction case"`,
 `"Nothing to do — waiting on maintainer review. Check back next week."`
+
+### ## Watch For
+
+Specific, concrete signals to monitor for this issue. These drive what gets checked
+on the next run. Avoid generic statements — name exact PRs, labels, or events.
+
+Bad: `"Watch for updates"`, `"Monitor the repo"`
+Good:
+```
+- PR #4521 merging (would fix root cause)
+- `p0` label being added (escalation signal)
+- @core-dev responding to the reproduction request from Mar 28
+```
 
 ### ## Key Context
 
