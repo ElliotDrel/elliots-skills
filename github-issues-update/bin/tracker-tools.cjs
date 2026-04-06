@@ -23,6 +23,11 @@ const path = require('path');
 const os = require('os');
 const { exec, execSync } = require('child_process');
 
+function todayTag() {
+  const d = new Date().toISOString().split('T')[0];
+  return `today's date is **${d}**, ignore earlier dates`;
+}
+
 // ─── CLI Router ─────────────────────────────────────────────────────────────
 
 const [,, command, ...rawArgs] = process.argv;
@@ -747,6 +752,7 @@ function cmdCompileReport(flags) {
 
   // Write metadata to stderr for the agent to parse
   console.error(JSON.stringify({
+    today: todayTag(),
     issue_count: result.issue_count,
     activity_count: result.activity_count,
     report_file: path.join(tempDir, '_compiled-report.md'),
@@ -772,12 +778,12 @@ function cmdUpdateTracker(flags) {
   const { content: updated, changes } = applyTrackerUpdates(content, tempDir, date);
 
   if (changes.length === 0) {
-    console.log(JSON.stringify({ updated: false, changes: [] }));
+    console.log(JSON.stringify({ today: todayTag(), updated: false, changes: [] }));
     return;
   }
 
   fs.writeFileSync(trackerPath, updated, 'utf8');
-  console.log(JSON.stringify({ updated: true, changes }));
+  console.log(JSON.stringify({ today: todayTag(), updated: true, changes }));
 }
 
 function cmdInitTemp(flags) {
@@ -825,7 +831,7 @@ function cmdValidate(flags) {
     && checks.report_compiled
     && checks.all_issues_checked !== false;
 
-  console.log(JSON.stringify({ passed, checks }, null, 2));
+  console.log(JSON.stringify({ today: todayTag(), passed, checks }, null, 2));
 }
 
 // ─── Async Helper ──────────────────────────────────────────────────────────
@@ -873,7 +879,10 @@ async function cmdStartup(flags) {
       || authOutput.match(/account\s+(\S+)/i);
     if (userMatch) username = userMatch[1];
   } catch (err) {
-    console.log(JSON.stringify({ script_ok: true, auth: false }));
+    console.log(JSON.stringify({
+      script_ok: true, auth: false, today: todayTag(),
+      error: 'Not authenticated with GitHub. Run `gh auth login` in your terminal to fix this.'
+    }));
     return;
   }
 
@@ -882,7 +891,10 @@ async function cmdStartup(flags) {
     try {
       username = execSync('gh api user --jq .login', { encoding: 'utf8' }).trim();
     } catch (_) {
-      console.log(JSON.stringify({ script_ok: true, auth: false }));
+      console.log(JSON.stringify({
+        script_ok: true, auth: false, today: todayTag(),
+        error: 'Not authenticated with GitHub. Run `gh auth login` in your terminal to fix this.'
+      }));
       return;
     }
   }
@@ -976,10 +988,16 @@ async function cmdStartup(flags) {
 
   const recentlyClosed = closedResults.map(issueInfo);
 
+  // Create temp directory for this session
+  const prefix = 'giu-checkin-';
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+
   console.log(JSON.stringify({
     script_ok: true,
     auth: true,
+    today: todayTag(),
     username,
+    temp_dir: tempDir,
     tracker_exists: trackerExists,
     tracker_path: trackerPath,
     tracker_data: {
@@ -1182,7 +1200,7 @@ async function cmdFetchIssues(flags) {
     }
   }
 
-  console.log(JSON.stringify({ fetched: files.length, files, errors }));
+  console.log(JSON.stringify({ today: todayTag(), fetched: files.length, files, errors }));
 }
 
 /**
@@ -1280,6 +1298,7 @@ function cmdBuildTracker(flags) {
   fs.writeFileSync(trackerPath, tracker, 'utf8');
 
   console.log(JSON.stringify({
+    today: todayTag(),
     written: true,
     path: trackerPath,
     active_count: entries.length,
