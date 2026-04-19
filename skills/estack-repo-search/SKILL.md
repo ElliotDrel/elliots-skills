@@ -1,5 +1,5 @@
 ---
-name: repo-search
+name: estack-repo-search
 description: >-
   Clone and search external GitHub repositories to answer questions about their
   code. Use this skill whenever the user references a repo you don't have local
