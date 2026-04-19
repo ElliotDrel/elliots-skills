@@ -10,17 +10,28 @@
 
 | Task | Action |
 |---|---|
-| **Editing a skill** | Show diff (`diff -ru ~/.claude/skills/<name> skills/<name>`), confirm with user, then run `node bin/install.cjs` |
+| **Editing a skill** | Invoke `edit-e-stack` skill |
 | **Adding a new skill** | Invoke `add-skill-to-e-stack` skill |
 | **Publishing to npm** | Invoke `publish-e-stack` skill |
-| **Debugging a failed publish** | Read `docs/publishing.md` |
-| **Skill auto-run commands** | Use `` ```! `` code blocks in SKILL.md — see `skills/estack-repo-search/SKILL.md` for example |
+| **Skill authoring reference** | Read `docs/skill-authoring.md` |
+| **Publishing/OIDC debugging** | Read `docs/publishing.md` |
 
 ## 2. Repo Structure
 
 - **Skills:** `skills/<skill-name>/SKILL.md` — each skill is a subfolder with a `SKILL.md` and optional supporting files
 - **Distribution:** `npx elliot-stack@latest` copies skills to `~/.claude/skills/`
 - **Installer:** `node bin/install.cjs` syncs repo skills to the live location
+
+```
+skills/<skill-name>/     # Each skill is a subfolder
+  SKILL.md               # Frontmatter + instructions (the skill itself)
+  scripts/               # Optional supporting shell/node scripts
+  references/            # Optional reference markdown files
+  steps/                 # Optional step-by-step guides
+bin/install.cjs          # Installer: copies skills to ~/.claude/skills/
+```
+
+**Skills currently in the pack:** `estack-better-title`, `estack-chris-voss`, `estack-customer-discovery`, `estack-github-issue-tracker`, `estack-repo-search`
 
 ## 3. Hard Rules
 
