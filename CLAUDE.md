@@ -1,6 +1,8 @@
 ## Publishing to npm
 
-Including `[publish]` in a commit message on `main` triggers a GitHub Actions workflow that auto-bumps the version and publishes to npm. Only add `[publish]` when the user confirms changes are ready to ship. Regular commits without `[publish]` are safe to push. See `docs/publishing.md` for full details.
+Including `[publish]` in a commit message on `main` triggers a GitHub Actions workflow that auto-bumps the patch version and publishes to npm via OIDC. Regular commits without `[publish]` are safe to push — no publish happens. Do NOT manually bump `package.json` version; the workflow handles it.
+
+`docs/publishing.md` contains auth setup details, OIDC configuration, and YAML gotchas from initial setup. Read it if you need to debug a failed publish or modify the workflow.
 
 ## Repo layout
 
