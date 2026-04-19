@@ -1,6 +1,10 @@
-# E-STACK RESOLVER
+# CLAUDE.md
 
-**E-stack** (`elliot-stack` on npm) is an open-source collection of Claude Code skills by Elliot Drel. It's a curated skill pack — users run `npx elliot-stack@latest` to install all skills to `~/.claude/skills/`. Skills cover negotiation (Chris Voss), customer discovery, GitHub issue tracking, and repo search. The repo is the source of truth; npm is the distribution channel.
+## What This Repo Is
+
+**E-Stack** (`elliot-stack` on npm) is an open-source collection of Claude Code skills by Elliot Drel. It's a curated skill pack — users run `npx elliot-stack@latest` to install all skills to `~/.claude/skills/`. Skills cover negotiation (Chris Voss), customer discovery, GitHub issue tracking, and repo search. The repo is the source of truth; npm is the distribution channel.
+
+---
 
 **Before acting, match your task to the routing below. Follow the referenced path — do not invent workflows.**
 
@@ -18,10 +22,6 @@
 
 ## 2. Repo Structure
 
-- **Skills:** `skills/<skill-name>/SKILL.md` — each skill is a subfolder with a `SKILL.md` and optional supporting files
-- **Distribution:** `npx elliot-stack@latest` copies skills to `~/.claude/skills/`
-- **Installer:** `node bin/install.cjs` syncs repo skills to the live location
-
 ```
 skills/<skill-name>/     # Each skill is a subfolder
   SKILL.md               # Frontmatter + instructions (the skill itself)
@@ -29,9 +29,12 @@ skills/<skill-name>/     # Each skill is a subfolder
   references/            # Optional reference markdown files
   steps/                 # Optional step-by-step guides
 bin/install.cjs          # Installer: copies skills to ~/.claude/skills/
+docs/                    # Reference docs (publishing, skill authoring)
 ```
 
-**Skills currently in the pack:** `estack-better-title`, `estack-chris-voss`, `estack-customer-discovery`, `estack-github-issue-tracker`, `estack-repo-search`
+- **Distribution:** `npx elliot-stack@latest` copies skills to `~/.claude/skills/`
+- **Local sync:** `node bin/install.cjs` syncs repo skills to the live location
+- **Skills in the pack:** `estack-better-title`, `estack-chris-voss`, `estack-customer-discovery`, `estack-github-issue-tracker`, `estack-repo-search`
 
 ## 3. Hard Rules
 
