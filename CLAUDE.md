@@ -38,3 +38,7 @@ When creating a new skill in this repo:
 1. Create the skill folder with a `SKILL.md` (e.g. `skills/my-skill/SKILL.md`)
 2. Run `node bin/install.cjs` to copy it to the live location
 3. Commit and push to `main` when ready — npm publish happens automatically
+
+## Skill auto-run commands
+
+Use ` ```! ` (triple backtick + `!`) code blocks in SKILL.md to run shell commands automatically when the skill is loaded. The output is presented to the model before it processes the rest of the skill. Use this for setup tasks, environment checks, or gathering context that the skill needs upfront. See `skills/estack-repo-search/SKILL.md` and `.claude/skills/publish-e-stack/SKILL.md` for examples.
