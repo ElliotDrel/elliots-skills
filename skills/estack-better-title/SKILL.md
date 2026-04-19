@@ -1,6 +1,6 @@
 ---
 name: estack-better-title
-description: Suggest better chat session titles and rename the session
+description: (estack-better-title) Suggest better chat session titles and rename the session
 disable-model-invocation: true
 allowed-tools: Bash, AskUserQuestion
 ---

@@ -18,7 +18,7 @@ The folder MUST be prefixed with `estack-`. The `SKILL.md` needs frontmatter wit
 ```markdown
 ---
 name: estack-<skill-name>
-description: <one-line description — this shows up in the skill list>
+description: (estack-<skill-name>) <one-line description — this shows up in the skill list>
 ---
 ```
 

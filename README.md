@@ -17,10 +17,11 @@ This copies skills to `~/.claude/skills/` and registers a `SessionStart` hook so
 
 | Skill | Command | Description |
 |-------|---------|-------------|
-| **Better Title** | `/estack:better-title` | Renames Claude Code chat sessions with descriptive titles |
-| **Chris Voss** | `/estack:chris-voss` | Applies negotiation principles from *Never Split the Difference* |
-| **GitHub Issue Tracker** | `/estack:github-issue-tracker` | Tracks and manages GitHub issues across repos |
-| **Repo Search** | `/estack:repo-search` | Clones and searches external GitHub repos to answer questions about their code |
+| **Better Title** | `/estack-better-title` | Renames Claude Code chat sessions with descriptive titles |
+| **Chris Voss** | `/estack-chris-voss` | Applies negotiation principles from *Never Split the Difference* |
+| **Customer Discovery** | `/estack-customer-discovery` | Guides through customer discovery — validating ideas, outreach, interviews, and analysis |
+| **GitHub Issue Tracker** | `/estack-github-issue-tracker` | Tracks and manages GitHub issues across repos |
+| **Repo Search** | `/estack-repo-search` | Clones and searches external GitHub repos to answer questions about their code |
 
 ## How it works
 
