@@ -57,9 +57,10 @@ for skill in skills/estack-*/; do
     echo "FAIL: MISSING description field in $name"
     fm_errors=$((fm_errors + 1))
   fi
+  short_name="${name#estack-}"
   desc_line=$(grep -A1 "^description:" "$skillmd" | tail -1)
-  if ! echo "$desc_line" | grep -q "($name)"; then
-    if ! grep "^description:" "$skillmd" | grep -q "($name)"; then
+  if ! echo "$desc_line" | grep -q "($short_name)"; then
+    if ! grep "^description:" "$skillmd" | grep -q "($short_name)"; then
       echo "FAIL: MISSING (name) prefix in description for $name"
       fm_errors=$((fm_errors + 1))
     fi

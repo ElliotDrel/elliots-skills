@@ -1,7 +1,7 @@
 ---
 name: estack-repo-search
 description: >-
-  (estack-repo-search) Clone and search external GitHub repositories to answer questions about their
+  (repo-search) Clone and search external GitHub repositories to answer questions about their
   code. Use this skill whenever the user references a repo you don't have local
   context for, asks about code in an external project, wants to compare
   implementations across repos, or needs information from a codebase that isn't

@@ -1,7 +1,7 @@
 ---
 name: estack-github-issue-tracker
 description: >
-  (estack-github-issue-tracker) GitHub issue tracker management. Checks all open issues the user is involved in,
+  (github-issue-tracker) GitHub issue tracker management. Checks all open issues the user is involved in,
   finds related/duplicate issues, reports what changed, and recommends next steps.
   Run anytime for a check-in — works the same whether it's the first run or a daily habit.
   The tracker file acts as a cache to make repeat runs faster.

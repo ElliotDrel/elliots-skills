@@ -1,44 +1,29 @@
-## Publishing to npm
+# E-STACK RESOLVER
 
-Including `[publish]` in a commit message on `main` triggers a GitHub Actions workflow that auto-bumps the patch version and publishes to npm via OIDC. Regular commits without `[publish]` are safe to push — no publish happens. Do NOT manually bump `package.json` version; the workflow handles it.
+**E-stack** (`elliot-stack` on npm) is an open-source collection of Claude Code skills by Elliot Drel. It's a curated skill pack — users run `npx elliot-stack@latest` to install all skills to `~/.claude/skills/`. Skills cover negotiation (Chris Voss), customer discovery, GitHub issue tracking, and repo search. The repo is the source of truth; npm is the distribution channel.
 
-`docs/publishing.md` contains auth setup details, OIDC configuration, and YAML gotchas from initial setup. Read it if you need to debug a failed publish or modify the workflow.
+**Before acting, match your task to the routing below. Follow the referenced path — do not invent workflows.**
 
-## Repo layout
+---
 
-This repo contains Claude Code skills distributed as **e-stack**. Each skill is a subfolder inside `skills/`, with a `SKILL.md` and optional supporting files.
+## 1. Task Routing
 
-**Distribution:** `npx elliot-stack@latest` → copies skills to `~/.claude/skills/`
+| Task | Action |
+|---|---|
+| **Editing a skill** | Show diff (`diff -ru ~/.claude/skills/<name> skills/<name>`), confirm with user, then run `node bin/install.cjs` |
+| **Adding a new skill** | Invoke `add-skill-to-e-stack` skill |
+| **Publishing to npm** | Invoke `publish-e-stack` skill |
+| **Debugging a failed publish** | Read `docs/publishing.md` |
+| **Skill auto-run commands** | Use `` ```! `` code blocks in SKILL.md — see `skills/estack-repo-search/SKILL.md` for example |
 
-Skills live under `skills/<skill-name>/` in this repo (e.g. `skills/better-title/`, `skills/chris-voss/`).
+## 2. Repo Structure
 
-## After making changes
+- **Skills:** `skills/<skill-name>/SKILL.md` — each skill is a subfolder with a `SKILL.md` and optional supporting files
+- **Distribution:** `npx elliot-stack@latest` copies skills to `~/.claude/skills/`
+- **Installer:** `node bin/install.cjs` syncs repo skills to the live location
 
-Follow this process for each skill you changed:
+## 3. Hard Rules
 
-1. **Show the diff** between the repo version and the live version:
-   ```bash
-   diff -ru ~/.claude/skills/<skill-name> skills/<skill-name>
-   ```
-   Show the output to the user so they can see exactly what will change.
-
-2. **Ask for confirmation** using `AskUserQuestion` before syncing. List which skill(s) will be overwritten.
-
-3. **Run the installer** only after the user confirms:
-   ```bash
-   node bin/install.cjs
-   ```
-
-**Do NOT manually bump `package.json` version** — the publish workflow handles this automatically on push to main.
-
-## Adding a new skill
-
-When creating a new skill in this repo:
-
-1. Create the skill folder with a `SKILL.md` (e.g. `skills/my-skill/SKILL.md`)
-2. Run `node bin/install.cjs` to copy it to the live location
-3. Commit and push to `main` when ready — npm publish happens automatically
-
-## Skill auto-run commands
-
-Use ` ```! ` (triple backtick + `!`) code blocks in SKILL.md to run shell commands automatically when the skill is loaded. The output is presented to the model before it processes the rest of the skill. Use this for setup tasks, environment checks, or gathering context that the skill needs upfront. See `skills/estack-repo-search/SKILL.md` and `.claude/skills/publish-e-stack/SKILL.md` for examples.
+- **Never manually bump `package.json` version** — the publish workflow handles this on push to main
+- **`[publish]` in a commit message** triggers npm publish via GitHub Actions. Commits without it are safe to push.
+- **Always show diff and confirm** before syncing changed skills to the live location
