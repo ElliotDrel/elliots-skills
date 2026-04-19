@@ -350,7 +350,7 @@ async function main() {
   for (const name of skillNames) {
     if (modifiedSkills.includes(name)) {
       if (modifiedAction === 'skip') {
-        console.log('  Skipped estack:' + name + ' (local modifications preserved)');
+        console.log('  Skipped estack-' + name + ' (local modifications preserved)');
         const currentHash = computeSkillHash(path.join(SKILLS_DIR, name));
         if (currentHash) newChecksums[name] = currentHash;
         continue;
@@ -358,7 +358,7 @@ async function main() {
       if (modifiedAction === 'merge') {
         backupSkill(name);
         mergedSkills.push(name);
-        console.log('  Backed up estack:' + name + ' → ~/.claude/.estack-backup/' + name);
+        console.log('  Backed up estack-' + name + ' → ~/.claude/.estack-backup/' + name);
       }
       // overwrite or merge — fall through to install
     } else if (!needsUpdate.includes(name) && fs.existsSync(path.join(SKILLS_DIR, name))) {
@@ -368,7 +368,7 @@ async function main() {
     copyDir(path.join(PACKAGE_SKILLS_DIR, name), path.join(SKILLS_DIR, name));
     newChecksums[name] = packageHashes[name];
     installedCount++;
-    console.log('  Installed estack:' + name);
+    console.log('  Installed estack-' + name);
   }
 
   // 9. Write checksums
@@ -384,7 +384,7 @@ async function main() {
 
   for (const name of skillNames) {
     const desc = getSkillDescription(path.join(PACKAGE_SKILLS_DIR, name));
-    console.log('  /estack:' + name + (desc ? ' — ' + desc : ''));
+    console.log('  /estack-' + name + (desc ? ' — ' + desc : ''));
   }
 
   if (mergedSkills.length > 0) {
