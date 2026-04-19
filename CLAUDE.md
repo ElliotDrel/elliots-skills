@@ -1,3 +1,7 @@
+## Publishing to npm
+
+Including `[publish]` in a commit message on `main` triggers a GitHub Actions workflow that auto-bumps the version and publishes to npm. Only add `[publish]` when the user confirms changes are ready to ship. Regular commits without `[publish]` are safe to push. See `docs/publishing.md` for full details.
+
 ## Repo layout
 
 This repo contains Claude Code skills distributed as **e-stack**. Each skill is a subfolder inside `skills/`, with a `SKILL.md` and optional supporting files.
@@ -23,10 +27,12 @@ Follow this process for each skill you changed:
    node bin/install.cjs
    ```
 
+**Do NOT manually bump `package.json` version** — the publish workflow handles this automatically on push to main.
+
 ## Adding a new skill
 
 When creating a new skill in this repo:
 
 1. Create the skill folder with a `SKILL.md` (e.g. `skills/my-skill/SKILL.md`)
 2. Run `node bin/install.cjs` to copy it to the live location
-4. Bump the version in `package.json` before publishing to npm
+3. Commit and push to `main` when ready — npm publish happens automatically
