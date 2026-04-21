@@ -1,8 +1,10 @@
 # Step 4: Analysis & Signals
 
-## Before anything else
+## Before anything else — BLOCKING REQUIREMENT
 
-Read `references/04-analysis-and-signals.md` in the skill directory. That's your source of truth for this step.
+<CRITICAL>
+You MUST read `references/04-analysis-and-signals.md` BEFORE responding to the user. Do NOT skip this. This file contains the actual frameworks and instructions — without reading it, your output will be generic and wrong.
+</CRITICAL>
 
 ## What this step accomplishes
 

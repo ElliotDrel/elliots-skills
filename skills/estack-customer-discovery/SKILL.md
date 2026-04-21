@@ -28,16 +28,22 @@ If they describe their situation without picking a step, route them based on whe
 - Have interviews scheduled but need questions → **Step 3: Interview Execution**
 - Have done interviews and need to make sense of them → **Step 4: Analysis & Signals**
 
-### Step 2: Read the right step file
+### Step 2: Read the right step file — MANDATORY
 
-Each step has its own workflow file with detailed instructions. Read the one you need:
+<CRITICAL>
+You MUST read the step file AND its corresponding reference file BEFORE responding to the user. Do NOT skip this. These files contain the actual frameworks and instructions — without reading them, your output will be generic and wrong.
+</CRITICAL>
 
-- **Step 1: Strategy & Targeting** → Read `steps/step-1-strategy.md`
-- **Step 2: Outreach** → Read `steps/step-2-outreach.md`
-- **Step 3: Interview Execution** → Read `steps/step-3-interviews.md`
-- **Step 4: Analysis & Signals** → Read `steps/step-4-analysis.md`
+Each step has its own workflow file with detailed instructions. **Read the step file first, then read the reference file it points to.** Both reads are required — not optional, not "if you have time."
 
-The step file will tell you to also read the corresponding reference document. The reference docs are the source of truth — they contain the principles and frameworks. The step files tell you how to work through them with the user.
+| Step | Step file (read first) | Reference file (read second) |
+|---|---|---|
+| 1. Strategy & Targeting | `steps/step-1-strategy.md` | `references/01-strategy-and-targeting.md` |
+| 2. Outreach | `steps/step-2-outreach.md` | `references/02-outreach.md` |
+| 3. Interview Execution | `steps/step-3-interviews.md` | `references/03-interview-execution.md` |
+| 4. Analysis & Signals | `steps/step-4-analysis.md` | `references/04-analysis-and-signals.md` |
+
+The reference docs are the source of truth — they contain the principles and frameworks. The step files tell you how to work through them with the user.
 
 ### Step 3: Be adaptive
 
