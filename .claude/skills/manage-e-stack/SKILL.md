@@ -28,6 +28,7 @@ These apply to every route. Violating them breaks the install or publish.
 - **`[publish]` in a commit message on `main`** triggers npm publish via CI. Commits without it are safe.
 - **Live install location:** `~/.claude/skills/estack-*/` (the installer copies from `skills/` here)
 - **Installer:** `node bin/install.cjs` from repo root
+- **Always `git pull --rebase origin main`** before committing or pushing. The user wants a linear commit history, so never plain `git pull` or `git merge` (those create merge commits). CI bumps origin after every publish, so local is almost always behind.
 
 ## Skill Map
 

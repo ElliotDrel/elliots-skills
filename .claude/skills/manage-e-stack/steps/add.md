@@ -56,6 +56,7 @@ NEVER commit or push without explicit confirmation from the user. Before touchin
 5. Only proceed after the user says yes
 
 ```bash
+git pull --rebase origin main
 git add skills/estack-<skill-name>/
 git commit -m "add <skill-name> skill [publish]"
 git push
