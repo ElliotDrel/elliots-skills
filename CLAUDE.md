@@ -14,9 +14,7 @@
 
 | Task | Action |
 |---|---|
-| **Editing a skill** | Invoke `edit-e-stack` skill |
-| **Adding a new skill** | Invoke `add-skill-to-e-stack` skill |
-| **Publishing to npm** | Invoke `publish-e-stack` skill |
+| **Any change to e-stack** (add, edit, publish a skill) | Invoke `manage-e-stack` skill — it routes to the right step file |
 | **Skill authoring reference** | Read `docs/skill-authoring.md` |
 | **Publishing/OIDC debugging** | Read `docs/publishing.md` |
 

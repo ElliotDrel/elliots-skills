@@ -1,11 +1,6 @@
----
-name: add-skill-to-e-stack
-description: "MUST USE whenever adding, creating, migrating, importing, or publishing a skill to the e-stack repo. Triggers: adding a skill to e-stack, creating a new estack skill, moving a skill into e-stack, publishing a skill to npm via e-stack, migrating a local skill to e-stack, 'let's add this to e-stack', 'put this in e-stack', 'make this an estack skill'. If the task involves putting a skill into the skills/ directory of this repo, USE THIS SKILL — no exceptions."
----
-
 # Adding a Skill to E-Stack
 
-Follow these steps exactly. Do not manually bump `package.json` version.
+Follow these steps in order. Do not manually bump `package.json` version.
 
 ## 1. Create the skill folder
 
@@ -22,9 +17,9 @@ description: (<skill-name>) <one-line description — this shows up in the skill
 ---
 ```
 
-Both the folder and the `name` field use the `estack-` prefix. This ensures the skill is namespaced correctly when installed to `~/.claude/skills/`.
+Both the folder and the `name` field use the `estack-` prefix. The `description` MUST start with `(<skill-name>)` (the short name without the prefix). This namespaces the skill correctly when installed to `~/.claude/skills/`.
 
-Add any supporting files (references, steps, etc.) in subfolders as needed.
+Add any supporting files (references, steps, scripts) in subfolders as needed.
 
 ## 2. Show the diff (if migrating from an existing skill)
 
@@ -68,12 +63,6 @@ git push
 
 Do NOT manually bump `package.json` version — the GitHub Actions workflow handles it automatically.
 
-## Quick reference
+## 6. Route to publish (optional)
 
-| What | Where |
-|------|-------|
-| Skills source | `skills/estack-*/` |
-| Installer | `bin/install.cjs` |
-| Live location | `~/.claude/skills/estack-*/` |
-| Publish trigger | `[publish]` in commit message on `main` |
-| Version bumps | Automatic via CI |
+If the commit included `[publish]`, follow `steps/publish.md` Phase 3 to verify the publish landed.

@@ -1,12 +1,3 @@
----
-name: publish-e-stack
-description: >
-  Use when the user wants to publish, release, or push a new version of e-stack to npm.
-  Triggers: "publish", "release it", "ship it", "push to npm", "we're ready to publish",
-  or verifying a publish went through. Do not use for skill editing or installing —
-  use edit-e-stack for that.
----
-
 # Publish E-Stack to npm
 
 Follow each phase in order. There is one approval gate.
