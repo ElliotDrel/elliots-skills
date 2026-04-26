@@ -11,10 +11,27 @@ The current session ID is: ${CLAUDE_SESSION_ID}
 
 ## Your task
 
-Suggest **3 descriptive titles** for this chat session based on the conversation so far. The goal is to make sessions easy to find later. Good titles:
-- Summarize **what was accomplished** in the chat, not just the topic
-- List key actions/outcomes separated by dashes, commas, or similar (e.g. "Reverse-Engineering /rename, PR #33165 Comment, and Building /better-title Skill")
-- Are detailed enough that someone skimming a session list can tell exactly what happened
+Suggest **3 descriptive titles** for this chat session based on the conversation so far. The goal is to make sessions easy to find later.
+
+### Before drafting, do this quick mental pass
+
+Ask yourself:
+1. What were the **goals** going in?
+2. What **got built / decided / fixed** that the user might reference later?
+3. What was **noise** — mistakes, abandoned approaches, things they had to redirect you on, dead ends? (These do NOT belong in the title.)
+4. What's **temporary** vs. **lasting**? Temporary states should be mentioned briefly, not led with.
+
+Write the title from those answers, NOT from a chronological recap of the chat.
+
+### Good titles
+
+- Summarize **what was accomplished**, not what was attempted
+- **Title the outputs, not the journey** — exclude mistakes, dead ends, and abandoned approaches. They're not searchable and not useful context for future-you.
+- **Use plain language a future-you would search for.** Avoid jargon like "passthrough," "edge cases," "toggle logic," "auto-cd," "refactored," "overhaul." Say what it does in normal words.
+- **Weight by long-term reference value.** If something will stop mattering in weeks or months (temporary fixes, current-state notes, "until X is available" workarounds), mention it briefly but don't lead with it.
+- List key outputs separated by dashes, commas, or similar (e.g. "Reverse-Engineering /rename, PR #33165 Comment, and Building /better-title Skill")
+- Cover 2-4 main outputs. Resist cramming everything in — first-pass attempts tend to over-include.
+- Are detailed enough that someone skimming a session list can tell exactly what they'd find inside
 - Typically 8-20 words — longer is fine if it adds useful detail
 
 ## Format
